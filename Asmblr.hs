@@ -17,17 +17,22 @@
 -- Author: Collin J. Doering <collin.doering@rekahsoft.ca>
 -- Date: Jun  5, 2015
 
-import qualified Data.Map as Map
+----------------------------------------------------------------------------
+
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Prim (modifyState)
 import Text.Parsec.Char (endOfLine)
 
-import Control.Monad (liftM)
-import System.Environment (getArgs)
 import System.IO
+import System.Console.GetOpt
+import System.Environment (getArgs, getProgName)
 
+import Control.Monad (liftM)
 import Numeric (showIntAtBase)
 import Data.Char (intToDigit)
+import qualified Data.Map as Map
+
+----------------------------------------------------------------------------
 
 type SymbolTable = Map.Map String Int
 
@@ -36,6 +41,8 @@ type Label = String
 data Instruction = AInstr Int
                  | CInstr String String String
                  deriving (Show, Read, Eq)
+
+----------------------------------------------------------------------------
 
 aInstrAddr :: GenParser Char st Instruction
 aInstrAddr = AInstr . read <$> many1 digit
@@ -57,36 +64,32 @@ aInstr = do
   aInstrAddr <|> aInstrSym
 
 cInstrDest :: GenParser Char st (String, String)
-cInstrDest = do
-  dest <- choice [ try (string "AMD") >> return ("AMD", "111")
-                 , try (string "AD")  >> return ("AD", "110")
-                 , try (string "AM")  >> return ("AM", "101")
-                 , char 'A'           >> return ("A", "100")
-                 , try (string "MD")  >> return ("MD", "011")
-                 , char 'D'           >> return ("D", "010")
-                 , char 'M'           >> return ("M", "001") ]
-  return dest
+cInstrDest = choice [ try (string "AMD") >> return ("AMD", "111")
+                    , try (string "AD")  >> return ("AD",  "110")
+                    , try (string "AM")  >> return ("AM",  "101")
+                    , try (string "MD")  >> return ("MD",  "011")
+                    , char 'A'           >> return ("A",   "100")
+                    , char 'D'           >> return ("D",   "010")
+                    , char 'M'           >> return ("M",   "001") ]
 
 cInstrJump :: GenParser Char st (String, String)
-cInstrJump = do
-  jump <- char 'J' >>
-    choice [ try (string "MP") >> return ("JMP", "111")
-           , try (string "LE") >> return ("JLE", "110")
-           , try (string "NE") >> return ("JNE", "101")
-           , try (string "LT") >> return ("JLT", "100")
-           , try (string "GE") >> return ("JGE", "011")
-           , try (string "EQ") >> return ("JEQ", "010")
-           , try (string "GT") >> return ("JGT", "001") ]
-  return jump
+cInstrJump = char 'J' >>
+               choice [      string "MP"  >> return ("JMP", "111")
+                      , try (string "LE") >> return ("JLE", "110")
+                      ,      string "LT"  >> return ("JLT", "100")
+                      ,      string "NE"  >> return ("JNE", "101")
+                      ,      string "EQ"  >> return ("JEQ", "010")
+                      , try (string "GE") >> return ("JGE", "011")
+                      ,      string "GT"  >> return ("JGT", "001") ]
 
 cInstrAluOps :: GenParser Char st (String, String)
-cInstrAluOps = choice [ try (char   '0')   >> return ("0",   "0101010")
-                      , try (char   '1')   >> return ("1",   "0111111")
+cInstrAluOps = choice [      char   '0'    >> return ("0",   "0101010")
+                      ,      char   '1'    >> return ("1",   "0111111")
                       
                       , try (string "-1")  >> return ("-1",  "0111010")
                       , try (string "-D")  >> return ("-D",  "0001111")
                       , try (string "-A")  >> return ("-A",  "0110011")
-                      , try (string "-M")  >> return ("-M",  "1110011")
+                      ,      string "-M"   >> return ("-M",  "1110011")
 
                       , try (string "D+1") >> return ("D+1", "0011111")
                       , try (string "D-1") >> return ("D-1", "0001110")
@@ -98,21 +101,21 @@ cInstrAluOps = choice [ try (char   '0')   >> return ("0",   "0101010")
                       , try (string "D-M") >> return ("D-M", "1010011")
                       , try (string "D&M") >> return ("D&M", "1000000")
                       , try (string "D|M") >> return ("D|M", "1010101")
-                      , try (char   'D')   >> return ("D",   "0001100")
+                      ,      char   'D'    >> return ("D",   "0001100")
                       
                       , try (string "!D")  >> return ("!D",  "0001101")
                       , try (string "!A")  >> return ("!A",  "0110001")
-                      , try (string "!M")  >> return ("!M",  "1110001")
+                      ,      string "!M"   >> return ("!M",  "1110001")
 
                       , try (string "A+1") >> return ("A+1", "0110111")
                       , try (string "A-1") >> return ("A-1", "0110010")
                       , try (string "A-D") >> return ("A-D", "0000111")
-                      , try (char   'A')   >> return ("A",   "0110000")
+                      ,      char   'A'    >> return ("A",   "0110000")
 
                       , try (string "M+1") >> return ("M+1", "1110111")
                       , try (string "M-1") >> return ("M-1", "1110010")
                       , try (string "M-D") >> return ("M-D", "1000111")
-                      , try (char   'M')   >> return ("M",   "1110000") ]
+                      ,      char   'M'    >> return ("M",   "1110000") ]
 
 cInstrNoJump :: GenParser Char st Instruction
 cInstrNoJump = do
@@ -203,7 +206,8 @@ emptyLine = manyTill space (lookAhead endOfLine)
 
 firstPass :: GenParser Char (Int, SymbolTable) (String, SymbolTable)
 firstPass = do
-  str <- liftM (unlines . filter (not . null)) $ sepEndBy (try comment <|> try emptyLine <|> try labelLine <|> instrLine) endOfLine
+  str <- liftM (unlines . filter (not . null)) $
+           sepEndBy (comment <|> emptyLine <|> labelLine <|> instrLine) endOfLine
   (_, symTbl) <- getState
   return (str, symTbl)
 
@@ -239,7 +243,7 @@ genHackML :: [Instruction] -> String
 genHackML xs = unlines $ map instrToML xs
   where instrToML (AInstr n)            = leftPad 16 '0' $ showIntAtBase 2 intToDigit n ""
         instrToML (CInstr op dest jump) = "111" ++ op ++ dest ++ jump
-        leftPad n a xs = replicate (n - (length xs)) a ++ xs
+        leftPad n a ys = replicate (n - (length ys)) a ++ ys
 
 parseHackAsmFile :: FilePath -> IO String
 parseHackAsmFile f = withFile f ReadMode $ \h -> do
