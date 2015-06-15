@@ -146,15 +146,16 @@ cInstr = try cInstrDestJump <|> try cInstrNoDest <|> cInstrNoJump
 instr :: GenParser Char (Int, SymbolTable) Instruction
 instr = aInstr <|> cInstr
 
+symbol :: GenParser Char st String
 symbol = many1 (alphaNum <|> oneOf "_.$:")
 
---comment :: GenParser Char st [Char]
+comment :: GenParser Char st String
 comment = do
   optional $ many $ oneOf " \t"
   string "//" >> manyTill anyChar (lookAhead endOfLine)
   return ""
 
---aLabel:: GenParser Char st String
+labelLine :: GenParser Char (a, Map.Map String a) String
 labelLine= do
   optional $ many $ oneOf " \t"
   lbl <- between (char '(') (char ')') symbol
@@ -166,7 +167,7 @@ labelLine= do
    Just _  -> error $ "Aleady used label \"" ++ lbl ++ "\""
   return ""
 
---instrLine :: GenParser Char st String
+instrLine :: GenParser Char (Int, a) String
 instrLine = do
   optional $ many $ oneOf " \t"
   ret <- aInstr' <|> cInstr'
@@ -197,6 +198,7 @@ instrLine = do
              (Nothing, Just jump') -> return $ op ++ ";" ++ jump'
              (Just dest', Just jump') -> return $ dest' ++ "=" ++ op ++ ";" ++ jump'
 
+emptyLine :: GenParser Char st String
 emptyLine = manyTill space (lookAhead endOfLine)
 
 firstPass :: GenParser Char (Int, SymbolTable) (String, SymbolTable)
@@ -212,8 +214,8 @@ parseHackAsm :: Monad m => String -> m String
 parseHackAsm str = case runParser firstPass (0, varSymbols) "" str of
   Left  err            -> return $ show err
   Right (str', symTbl) -> case runParser secondPass (16, symTbl) "" str' of
-    Left  err -> return $ show err
-    Right out -> return $ genHackML out
+                           Left  err -> return $ show err
+                           Right out -> return $ genHackML out
   where varSymbols = Map.fromList [ ("R0", 0), ("SP", 0)
                                   , ("R1", 1), ("LCL", 1)
                                   , ("R2", 2), ("ARG", 2)
