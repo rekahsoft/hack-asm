@@ -22,12 +22,11 @@ import Text.ParserCombinators.Parsec
 import Text.Parsec.Prim (modifyState)
 import Text.Parsec.Char (endOfLine)
 
-import Data.Functor ((<$>))
 import Control.Monad (liftM)
 import System.Environment (getArgs)
 import System.IO
 
-import Numeric (showHex, showIntAtBase)
+import Numeric (showIntAtBase)
 import Data.Char (intToDigit)
 
 type SymbolTable = Map.Map String Int
@@ -43,7 +42,7 @@ aInstrAddr = AInstr . read <$> many1 digit
 
 aInstrSym :: GenParser Char (Int, SymbolTable) Instruction
 aInstrSym = do
-  var <- many1 (alphaNum <|> oneOf "-_")
+  var <- symbol
 
   (curMem, symTbl) <- getState
   case Map.lookup var symTbl of
@@ -206,38 +205,33 @@ firstPass = do
   (_, symTbl) <- getState
   return (str, symTbl)
 
-  -- str <- liftM (unlines . filter (not . null)) $ many $ do
-  --   aLabel <|> comment <|> do
-  --     i <- manyTill anyChar (lookAhead endOfLine)
-  --     endOfLine
-    
-  --     (lineNum, symTbl) <- getState
-  --     setState (lineNum + 1, symTbl)
-  --     return i
-  -- (_, symTbl) <- getState
-  -- return (str, symTbl)
-
-  -- optional comment
-  -- spaces
-  
-  -- i <- aInstr <|> cInstr
-  
-  -- optional comment
-  -- endOfLine
-
-  -- return i
-  
-
 secondPass :: GenParser Char (Int, SymbolTable) [Instruction]
 secondPass = sepEndBy instr endOfLine
 
-parseHackAsm str = case runParser firstPass (0, Map.empty) "" str of
-  Left  err  -> return $ show err
+parseHackAsm :: Monad m => String -> m String
+parseHackAsm str = case runParser firstPass (0, varSymbols) "" str of
+  Left  err            -> return $ show err
   Right (str', symTbl) -> case runParser secondPass (16, symTbl) "" str' of
     Left  err -> return $ show err
     Right out -> return $ genHackML out
-
-
+  where varSymbols = Map.fromList [ ("R0", 0), ("SP", 0)
+                                  , ("R1", 1), ("LCL", 1)
+                                  , ("R2", 2), ("ARG", 2)
+                                  , ("R3", 3), ("THIS", 3)
+                                  , ("R4", 4), ("THAT", 4)
+                                  , ("R5", 5)
+                                  , ("R6", 6)
+                                  , ("R7", 7)
+                                  , ("R8", 8)
+                                  , ("R9", 9)
+                                  , ("R10", 10)
+                                  , ("R11", 11)
+                                  , ("R12", 12)
+                                  , ("R13", 13)
+                                  , ("R14", 14)
+                                  , ("R15", 15)
+                                  , ("SCREEN", 16384)
+                                  , ("KBD", 24576) ]
 
 genHackML :: [Instruction] -> String
 genHackML xs = unlines $ map instrToML xs
@@ -245,13 +239,13 @@ genHackML xs = unlines $ map instrToML xs
         instrToML (CInstr op dest jump) = "111" ++ op ++ dest ++ jump
         leftPad n a xs = replicate (n - (length xs)) a ++ xs
 
+parseHackAsmFile :: FilePath -> IO String
 parseHackAsmFile f = withFile f ReadMode $ \h -> do
-  hGetContents h >>= parseHackAsm >>= putStr
+  hGetContents h >>= parseHackAsm
 
--- main :: IO ()
--- main = do
---   -- parse cli arguments
---   filename <- liftM fst $ getArgs
---   let outFilename = drop 4 filename
-
---   writeFile outFilename $ parseHackAsm filename >>= uncurry genHackML
+main :: IO ()
+main = do
+  args <- getArgs
+  let filename = head args
+      outFilename = (reverse $ drop 4 (reverse filename)) ++ ".hack"
+  parseHackAsmFile filename >>= writeFile outFilename
