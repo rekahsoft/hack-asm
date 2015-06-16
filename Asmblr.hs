@@ -26,7 +26,7 @@ import Text.Parsec.Char (endOfLine)
 import System.IO
 import System.FilePath (dropExtension)
 import System.Console.GetOpt
-import System.Environment (getArgs, getProgName)
+import System.Environment (getArgs)
 
 import Control.Monad (liftM)
 import Numeric (showIntAtBase)
@@ -35,9 +35,9 @@ import qualified Data.Map as Map
 
 ----------------------------------------------------------------------------
 
-type SymbolTable = Map.Map String Int
-
 type Label = String
+
+type SymbolTable = Map.Map Label Int
 
 data Instruction = AInstr Int
                  | CInstr String String String
@@ -64,7 +64,7 @@ aInstr = do
   char '@'
   aInstrAddr <|> aInstrSym
 
-cInstrDest :: GenParser Char st (String, String)
+cInstrDest :: GenParser Char st (Label, String)
 cInstrDest = choice [ try (string "AMD") >> return ("AMD", "111")
                     , try (string "AD")  >> return ("AD",  "110")
                     , try (string "AM")  >> return ("AM",  "101")
@@ -73,7 +73,7 @@ cInstrDest = choice [ try (string "AMD") >> return ("AMD", "111")
                     , char 'D'           >> return ("D",   "010")
                     , char 'M'           >> return ("M",   "001") ]
 
-cInstrJump :: GenParser Char st (String, String)
+cInstrJump :: GenParser Char st (Label, String)
 cInstrJump = char 'J' >>
                choice [      string "MP"  >> return ("JMP", "111")
                       , try (string "LE") >> return ("JLE", "110")
@@ -83,7 +83,7 @@ cInstrJump = char 'J' >>
                       , try (string "GE") >> return ("JGE", "011")
                       ,      string "GT"  >> return ("JGT", "001") ]
 
-cInstrAluOps :: GenParser Char st (String, String)
+cInstrAluOps :: GenParser Char st (Label, String)
 cInstrAluOps = choice [      char   '0'    >> return ("0",   "0101010")
                       ,      char   '1'    >> return ("1",   "0111111")
                       
@@ -158,7 +158,7 @@ comment = do
   string "//" >> manyTill anyChar (lookAhead endOfLine)
   return ""
 
-labelLine :: GenParser Char (a, Map.Map String a) String
+labelLine :: GenParser Char (a, Map.Map Label a) String
 labelLine= do
   lbl <- between (char '(') (char ')') symbol
   optional lineSpaces
@@ -249,10 +249,6 @@ genHackML xs = unlines $ map instrToML xs
         instrToML (CInstr op dest jump) = "111" ++ op ++ dest ++ jump
         leftPad n a ys = replicate (n - (length ys)) a ++ ys
 
-parseHackAsmFile :: FilePath -> IO String
-parseHackAsmFile f = withFile f ReadMode $ \h -> do
-  hGetContents h >>= parseHackAsm
-
 ----------------------------------------------------------------------------
 
 data Flag = Verbose
@@ -268,16 +264,26 @@ options = [ Option ['v'] ["verbose"] (NoArg Verbose) "chatty output on stderr"
           , Option ['o'] ["output"]  (OptArg Output "FILE") "output file or '-' for stdout" ]
 
 progVersion :: String
-progVersion = "1.0"
+progVersion = unlines [ "Assmblr 1.0"
+                      , "Copyright (C) 2014 RekahSoft, Ltd."
+                      , "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>."
+                      , "This is free software: you are free to change and redistribute it."
+                      , "There is NO WARRANTY, to the extent permitted by law."
+                      , ""
+                      , "Written by Collin J. Doering." ]
+
+-- TODO:
+--   * handle if input file dne or is unreadable
+--   * handle if output file is unwritable
+--   * display parser errors on stdout and do not generate output file
 
 main :: IO ()
 main = do
   argv <- getArgs
-  progName <- getProgName
 
   case getOpt Permute options argv of
-   (o, n, []) | any isVersion o -> putStrLn progVersion
-   (o, n, []) | any isHelp    o -> putStrLn $ usageInfo (header progName) options
+   (o, _, []) | any isVersion o -> putStr progVersion
+   (o, _, []) | any isHelp    o -> putStr $ usageInfo header options
    (o, [i], []) -> do
      --curDir <- getWorkingDirectory
      inFile <- if i == "-"
@@ -293,12 +299,12 @@ main = do
      hGetContents inFile >>= parseHackAsm >>= hPutStr outFile
      hClose inFile
      hClose outFile
-   (_, _, errs) -> ioError (userError (concat errs ++ usageInfo (header progName) options))
-  where header pn = "Usage: " ++ pn ++ " [OPTION...] file"
+   (_, _, errs) -> ioError (userError (concat errs ++ usageInfo header options))
+  where header = "Usage: Asmblr [OPTION...] file"
         isVersion Version = True
         isVersion _       = False
         isHelp    Help    = True
         isHelp    _       = False
         hasOutput [] = Nothing
-        hasOutput ((Output (Just x)):xs) = Just x
+        hasOutput ((Output (Just x)):_) = Just x
         hasOutput (_:xs) = hasOutput xs
