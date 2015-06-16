@@ -24,6 +24,7 @@ import Text.Parsec.Prim (modifyState)
 import Text.Parsec.Char (endOfLine)
 
 import System.IO
+import System.FilePath (dropExtension)
 import System.Console.GetOpt
 import System.Environment (getArgs, getProgName)
 
@@ -154,14 +155,13 @@ symbol = many1 (alphaNum <|> oneOf "_.$:")
 
 comment :: GenParser Char st String
 comment = do
-  optional $ many $ oneOf " \t"
   string "//" >> manyTill anyChar (lookAhead endOfLine)
   return ""
 
 labelLine :: GenParser Char (a, Map.Map String a) String
 labelLine= do
-  optional $ many $ oneOf " \t"
   lbl <- between (char '(') (char ')') symbol
+  optional lineSpaces
   optional comment
 
   (lineNum, symTbl) <- getState
@@ -172,8 +172,8 @@ labelLine= do
 
 instrLine :: GenParser Char (Int, a) String
 instrLine = do
-  optional $ many $ oneOf " \t"
   ret <- aInstr' <|> cInstr'
+  optional lineSpaces
   optional comment
 
   modifyState $ \(l, tbl) -> (l + 1, tbl)
@@ -204,10 +204,14 @@ instrLine = do
 emptyLine :: GenParser Char st String
 emptyLine = manyTill space (lookAhead endOfLine)
 
+lineSpaces :: GenParser Char st String
+lineSpaces = many $ oneOf " \t"
+
 firstPass :: GenParser Char (Int, SymbolTable) (String, SymbolTable)
 firstPass = do
-  str <- liftM (unlines . filter (not . null)) $
-           sepEndBy (comment <|> emptyLine <|> labelLine <|> instrLine) endOfLine
+  str <- liftM (unlines . filter (not . null)) $ (flip sepEndBy) endOfLine $ do
+          optional lineSpaces
+          comment <|> emptyLine <|> labelLine <|> instrLine
   (_, symTbl) <- getState
   return (str, symTbl)
 
@@ -249,9 +253,52 @@ parseHackAsmFile :: FilePath -> IO String
 parseHackAsmFile f = withFile f ReadMode $ \h -> do
   hGetContents h >>= parseHackAsm
 
+----------------------------------------------------------------------------
+
+data Flag = Verbose
+          | Version
+          | Help
+          | Output (Maybe String)
+          deriving (Eq, Show)
+
+options :: [OptDescr Flag]
+options = [ Option ['v'] ["verbose"] (NoArg Verbose) "chatty output on stderr"
+          , Option ['V'] ["version"] (NoArg Version) "show version number"
+          , Option ['h'] ["help"]    (NoArg Help)    "show program usage"
+          , Option ['o'] ["output"]  (OptArg Output "FILE") "output file or '-' for stdout" ]
+
+progVersion :: String
+progVersion = "1.0"
+
 main :: IO ()
 main = do
-  args <- getArgs
-  let filename = head args
-      outFilename = (reverse $ drop 4 (reverse filename)) ++ ".hack"
-  parseHackAsmFile filename >>= writeFile outFilename
+  argv <- getArgs
+  progName <- getProgName
+
+  case getOpt Permute options argv of
+   (o, n, []) | any isVersion o -> putStrLn progVersion
+   (o, n, []) | any isHelp    o -> putStrLn $ usageInfo (header progName) options
+   (o, [i], []) -> do
+     --curDir <- getWorkingDirectory
+     inFile <- if i == "-"
+                 then return stdin
+                 else openFile i ReadMode
+     outFile <- case hasOutput o of
+                 Nothing -> if i /= "-"
+                              then openFile (dropExtension i ++ ".hack") WriteMode
+                              else return stdout
+                 Just x  | x == "-" -> return stdout
+                 Just x -> openFile x WriteMode
+
+     hGetContents inFile >>= parseHackAsm >>= hPutStr outFile
+     hClose inFile
+     hClose outFile
+   (_, _, errs) -> ioError (userError (concat errs ++ usageInfo (header progName) options))
+  where header pn = "Usage: " ++ pn ++ " [OPTION...] file"
+        isVersion Version = True
+        isVersion _       = False
+        isHelp    Help    = True
+        isHelp    _       = False
+        hasOutput [] = Nothing
+        hasOutput ((Output (Just x)):xs) = Just x
+        hasOutput (_:xs) = hasOutput xs
