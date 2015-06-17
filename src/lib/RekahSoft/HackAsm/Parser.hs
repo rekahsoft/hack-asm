@@ -18,7 +18,7 @@
 -- Date: Jun 16, 2015
 
 {-|
-Module      : Asmblr.Parser
+Module      : RekahSoft.Asmblr.Parser
 Description : Parse hack assembly into its machine language representation
 Copyright   : (c) Collin J. Doering, 2015
 License     : GPL-3
@@ -28,7 +28,7 @@ Portability : POSIX
 
 TODO: describe the assemblers operation in more detail
 -}
-module Asmblr.Parser (parseHackAsm, parseHackAsmFile) where
+module RekahSoft.HackAsm.Parser (parseHackAsm, parseHackAsmFile) where
 
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Prim (modifyState)

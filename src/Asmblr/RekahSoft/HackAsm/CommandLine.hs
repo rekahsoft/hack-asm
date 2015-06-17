@@ -20,7 +20,7 @@
 ----------------------------------------------------------------------------
 
 {-|
-Module      : Asmblr
+Module      : RekahSoft.HackAsm.CommandLine
 Description : Program that takes a hack assembly and converts it to its
               machine language representation
 Copyright   : (c) Collin J. Doering, 2015
@@ -31,14 +31,14 @@ Portability : POSIX
 
 TODO: describe the assemblers operation in more detail
 -}
-module Asmblr (defaultMain) where
+module RekahSoft.HackAsm.CommandLine (defaultMain) where
 
 import System.IO
 import System.FilePath (dropExtension)
 import System.Console.GetOpt
 import System.Environment (getArgs)
 
-import Asmblr.Parser
+import RekahSoft.HackAsm.Parser
 
 ----------------------------------------------------------------------------
 

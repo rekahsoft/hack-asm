@@ -13,13 +13,21 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
--- File: Main.hs
+-- File: HackAsm.hs
 -- Author: Collin J. Doering <collin.doering@rekahsoft.ca>
--- Date: Jun 16, 2015
+-- Date: Jun 17, 2015
 
-module Main where
+{-|
+Module      : RekahSoft.Asmblr.Parser
+Description : Parse hack assembly into its machine language representation
+Copyright   : (c) Collin J. Doering, 2015
+License     : GPL-3
+Maintainer  : collin.doering@rekahsoft.ca
+Stability   : stable
+Portability : POSIX
 
-import Asmblr
+TODO: describe the assemblers operation in more detail
+-}
+module RekahSoft.HackAsm (parseHackAsm, parseHackAsmFile) where
 
-main :: IO ()
-main = defaultMain
+import RekahSoft.HackAsm.Parser
