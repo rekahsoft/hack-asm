@@ -1,12 +1,12 @@
 # Hack Assembler in Haskell
 
-* [Introduction](#introduction)
-* [Building](#building)
-* [Usage](#usage)
-* [Tools](#tools)
-* [License](#license)
-* [Issues](#issues)
-* [Related Projects](#related-projects)
+* [Introduction][introduction]
+* [Building][building]
+* [Usage][usage]
+* [Tools][tools]
+* [License][license]
+* [Issues][issues]
+* [Related Projects][related-projects]
 
 ## Introduction
 
