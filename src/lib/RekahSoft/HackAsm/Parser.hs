@@ -80,60 +80,80 @@ aInstr = do
 
 -- | TODO: Documentation
 cInstrDest :: GenParser Char st (Label, String)
-cInstrDest = choice [ try (string "AMD") >> return ("AMD", "111")
-                    , try (string "AD")  >> return ("AD",  "110")
-                    , try (string "AM")  >> return ("AM",  "101")
-                    , try (string "MD")  >> return ("MD",  "011")
-                    , char 'A'           >> return ("A",   "100")
-                    , char 'D'           >> return ("D",   "010")
-                    , char 'M'           >> return ("M",   "001") ]
+cInstrDest =
+  choice [ char 'D' >> return ("D",   "010")
+         , char 'M' >>
+             choice [ char 'D' >> return ("MD",  "011")
+                    , return ("M",   "001") ]
+         , char 'A' >>
+             choice [ char 'D' >> return ("AD",  "110")
+                    , char 'M' >>
+                        choice [ char 'D' >> return ("AMD", "111")
+                               , return ("AM",  "101") ]
+                    , return ("A",   "100") ]]
 
 -- | TODO: Documentation
 cInstrJump :: GenParser Char st (Label, String)
 cInstrJump = char 'J' >>
-               choice [      string "MP"  >> return ("JMP", "111")
-                      , try (string "LE") >> return ("JLE", "110")
-                      ,      string "LT"  >> return ("JLT", "100")
-                      ,      string "NE"  >> return ("JNE", "101")
-                      ,      string "EQ"  >> return ("JEQ", "010")
-                      , try (string "GE") >> return ("JGE", "011")
-                      ,      string "GT"  >> return ("JGT", "001") ]
+  choice [ string "MP"  >> return ("JMP", "111")
+         , string "NE"  >> return ("JNE", "101")
+         , string "EQ"  >> return ("JEQ", "010")
+         , char 'L' >>
+             choice [ char 'E' >> return ("JLE", "110")
+                    , char 'T' >> return ("JLT", "100") ]
+         , char 'G' >>
+             choice [ char 'E' >> return ("JGE", "011")
+                    , char 'T' >> return ("JGT", "001") ]
+         ]
 
 -- | TODO: Documentation
 cInstrAluOps :: GenParser Char st (Label, String)
-cInstrAluOps = choice [      char   '0'    >> return ("0",   "0101010")
-                      ,      char   '1'    >> return ("1",   "0111111")
-                      
-                      , try (string "-1")  >> return ("-1",  "0111010")
-                      , try (string "-D")  >> return ("-D",  "0001111")
-                      , try (string "-A")  >> return ("-A",  "0110011")
-                      ,      string "-M"   >> return ("-M",  "1110011")
+cInstrAluOps =
+  choice [ char '0' >> return ("0",   "0101010")
+         , char '1' >> return ("1",   "0111111")
 
-                      , try (string "D+1") >> return ("D+1", "0011111")
-                      , try (string "D-1") >> return ("D-1", "0001110")
-                      , try (string "D+A") >> return ("D+A", "0000010")
-                      , try (string "D-A") >> return ("D-A", "0010011")
-                      , try (string "D&A") >> return ("D&A", "0000000")
-                      , try (string "D|A") >> return ("D|A", "0010101")
-                      , try (string "D+M") >> return ("D+M", "1000010")
-                      , try (string "D-M") >> return ("D-M", "1010011")
-                      , try (string "D&M") >> return ("D&M", "1000000")
-                      , try (string "D|M") >> return ("D|M", "1010101")
-                      ,      char   'D'    >> return ("D",   "0001100")
-                      
-                      , try (string "!D")  >> return ("!D",  "0001101")
-                      , try (string "!A")  >> return ("!A",  "0110001")
-                      ,      string "!M"   >> return ("!M",  "1110001")
+         , char '-' >>
+             choice [ char '1' >> return ("-1",  "0111010")
+                    , char 'D' >> return ("-D",  "0001111")
+                    , char 'A' >> return ("-A",  "0110011")
+                    , char 'M' >> return ("-M",  "1110011") ]
 
-                      , try (string "A+1") >> return ("A+1", "0110111")
-                      , try (string "A-1") >> return ("A-1", "0110010")
-                      , try (string "A-D") >> return ("A-D", "0000111")
-                      ,      char   'A'    >> return ("A",   "0110000")
+         , char '!' >>
+             choice [ char 'D' >> return ("!D",  "0001101")
+                    , char 'A' >> return ("!A",  "0110001")
+                    , char 'M' >> return ("!M",  "1110001") ]
 
-                      , try (string "M+1") >> return ("M+1", "1110111")
-                      , try (string "M-1") >> return ("M-1", "1110010")
-                      , try (string "M-D") >> return ("M-D", "1000111")
-                      ,      char   'M'    >> return ("M",   "1110000") ]
+         , char 'A' >>
+             choice [ string "+1" >> return ("A+1", "0110111")
+                    , char '-' >>
+                        choice [ char '1' >> return ("A-1", "0110010")
+                               , char 'D' >> return ("A-D", "0000111") ]
+                    , return ("A",   "0110000") ]
+
+         , char 'M' >>
+             choice [ string "+1" >> return ("M+1", "1110111")
+                    , char '-' >>
+                        choice [ char '1' >> return ("M-1", "1110010")
+                               , char 'D' >> return ("M-D", "1000111") ]
+                    , return ("M",   "1110000") ]
+
+         , char 'D' >>
+             choice [ char '+' >>
+                        choice [ char '1' >> return ("D+1", "0011111")
+                               , char 'A' >> return ("D+A", "0000010")
+                               , char 'M' >> return ("D+M", "1000010") ]
+                    , char '-' >>
+                        choice [ char '1' >> return ("D-1", "0001110")
+                               , char 'A' >> return ("D-A", "0010011")
+                               , char 'M' >> return ("D-M", "1010011") ]
+                    , char '&' >>
+                        choice [ char 'A' >> return ("D&A", "0000000")
+                               , char 'M' >> return ("D&M", "1000000") ]
+                    , char '|' >>
+                        choice [ char 'A' >> return ("D|A", "0010101")
+                               , char 'M' >> return ("D|M", "1010101") ]
+                    , return ("D",   "0001100")]
+         ]
 
 -- | TODO: Documentation
 cInstrNoJump :: GenParser Char st Instruction
