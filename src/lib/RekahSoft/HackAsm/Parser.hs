@@ -18,7 +18,7 @@
 -- Date: Jun 16, 2015
 
 {-|
-Module      : RekahSoft.Asmblr.Parser
+Module      : RekahSoft.HackAsm.Parser
 Description : Parse hack assembly into its machine language representation
 Copyright   : (c) Collin J. Doering, 2015
 License     : GPL-3
