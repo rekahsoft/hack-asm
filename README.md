@@ -83,8 +83,6 @@ output more human readable, and a few minor optimization's.
 * Create ParseException type to throw from parser and can be caught in
   `RekahSoft.HackAsm.CommanLine.defaultMain`
 * Add `(<?> "error description")` throughout parsers to make error output more readable
-* Re-factor `cInstrDest` and `cInstrAluOps` to remove unneeded use of `try`
-  for optimization's sake
 * Write tests so that future changes don't break things (see folder `testsuite`)
 
 If you discover a bug or have an issue with this project, please file a bug using
