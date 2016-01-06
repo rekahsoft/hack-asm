@@ -109,33 +109,33 @@ cInstrJump = char 'J' >>
 -- | TODO: Documentation
 cInstrAluOps :: GenParser Char st (String, String)
 cInstrAluOps =
-  choice [ char '0' >> return ("0",   "0101010")
-         , char '1' >> return ("1",   "0111111")
+  choice [ char '0' >> return ("0", "0101010")
+         , char '1' >> return ("1", "0111111")
 
          , char '-' >>
-             choice [ char '1' >> return ("-1",  "0111010")
-                    , char 'D' >> return ("-D",  "0001111")
-                    , char 'A' >> return ("-A",  "0110011")
-                    , char 'M' >> return ("-M",  "1110011") ]
+             choice [ char '1' >> return ("-1", "0111010")
+                    , char 'D' >> return ("-D", "0001111")
+                    , char 'A' >> return ("-A", "0110011")
+                    , char 'M' >> return ("-M", "1110011") ]
 
          , char '!' >>
-             choice [ char 'D' >> return ("!D",  "0001101")
-                    , char 'A' >> return ("!A",  "0110001")
-                    , char 'M' >> return ("!M",  "1110001") ]
+             choice [ char 'D' >> return ("!D", "0001101")
+                    , char 'A' >> return ("!A", "0110001")
+                    , char 'M' >> return ("!M", "1110001") ]
 
          , char 'A' >>
              choice [ string "+1" >> return ("A+1", "0110111")
                     , char '-' >>
                         choice [ char '1' >> return ("A-1", "0110010")
                                , char 'D' >> return ("A-D", "0000111") ]
-                    , return ("A",   "0110000") ]
+                    , return ("A", "0110000") ]
 
          , char 'M' >>
              choice [ string "+1" >> return ("M+1", "1110111")
                     , char '-' >>
                         choice [ char '1' >> return ("M-1", "1110010")
                                , char 'D' >> return ("M-D", "1000111") ]
-                    , return ("M",   "1110000") ]
+                    , return ("M", "1110000") ]
 
          , char 'D' >>
              choice [ char '+' >>
@@ -152,7 +152,7 @@ cInstrAluOps =
                     , char '|' >>
                         choice [ char 'A' >> return ("D|A", "0010101")
                                , char 'M' >> return ("D|M", "1010101") ]
-                    , return ("D",   "0001100")]
+                    , return ("D", "0001100")]
          ]
 
 -- | TODO: Documentation
