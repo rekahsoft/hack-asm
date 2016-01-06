@@ -233,11 +233,15 @@ instrLine = do
           cInstr' = do
             dest <- optionMaybe $ try $ do
               (d, _) <- cInstrDest
+              optional spaces
               char '='
+              optional spaces
               return d
             (op, _)   <- cInstrAluOps
             jump <- optionMaybe $ try $ do
+              optional spaces
               char ';'
+              optional spaces
               (j, _) <- cInstrJump
               return j
 
