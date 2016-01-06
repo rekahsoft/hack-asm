@@ -79,7 +79,7 @@ aInstr = do
   aInstrAddr <|> aInstrSym
 
 -- | TODO: Documentation
-cInstrDest :: GenParser Char st (Label, String)
+cInstrDest :: GenParser Char st (String, String)
 cInstrDest =
   choice [ char 'D' >> return ("D",   "010")
          , char 'M' >>
@@ -93,7 +93,7 @@ cInstrDest =
                     , return ("A",   "100") ]]
 
 -- | TODO: Documentation
-cInstrJump :: GenParser Char st (Label, String)
+cInstrJump :: GenParser Char st (String, String)
 cInstrJump = char 'J' >>
   choice [ string "MP"  >> return ("JMP", "111")
          , string "NE"  >> return ("JNE", "101")
@@ -107,7 +107,7 @@ cInstrJump = char 'J' >>
          ]
 
 -- | TODO: Documentation
-cInstrAluOps :: GenParser Char st (Label, String)
+cInstrAluOps :: GenParser Char st (String, String)
 cInstrAluOps =
   choice [ char '0' >> return ("0",   "0101010")
          , char '1' >> return ("1",   "0111111")
